@@ -15,11 +15,13 @@ env:                                                    # Variables de entorno g
   DC_VERSION: "13.0.0"                                  # Versión del plugin OWASP Dependency-Check para Maven
   CDX_VERSION: "2.9.3"                                  # Versión del plugin CycloneDX para Maven
   FAIL_CVSS: "7"                                        # Umbral CVSS: el job falla si alguna dependencia tiene CVSS >= 7 (High/Critical)
+  NVD_FEED: "https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz"  # Patrón de los feeds JSON 2.0 del NVD ({0} = año o "modified")
 
 jobs:                                                   # Definición de los trabajos (jobs) del workflow
   dependency-check:                                     # Job 1: análisis SCA con Dependency-Check
     name: Dependency-Check (SCA)                        # Nombre legible del job en la interfaz
     runs-on: ubuntu-latest                              # Máquina virtual Ubuntu hospedada por GitHub
+    timeout-minutes: 45                                 # Corta el job si se cuelga, en vez de esperar el límite de 6 horas
 
     steps:                                              # Pasos que ejecuta el job, en orden
       - name: Checkout del código                       # Paso 1: obtener el código del repositorio
@@ -48,6 +50,7 @@ jobs:                                                   # Definición de los tra
           ARGS+=("-B")                                  # Modo batch: sin interacción y con logs limpios
           ARGS+=("-Dformats=HTML,XML,JSON,SARIF")       # Formatos de reporte: HTML, XML, JSON y SARIF
           ARGS+=("-DnvdApiKey=${NVD_API_KEY}")          # Pasa la clave del NVD (GitHub la enmascara como *** en los logs)
+          ARGS+=("-DnvdDatafeedUrl=${NVD_FEED}")        # Usa los feeds JSON anuales del NVD: base completa en ~5 min en vez de horas por la API
           ARGS+=("-DfailBuildOnCVSS=${FAIL_CVSS}")      # Hace fallar el paso si hay vulnerabilidades con CVSS >= umbral
           ARGS+=("-DossIndexAnalyzerEnabled=false")     # Desactiva Sonatype OSS Index (ahora exige credenciales propias)
           mvn "${ARGS[@]}" org.owasp:dependency-check-maven:${DC_VERSION}:check  # Ejecuta el goal check del plugin
